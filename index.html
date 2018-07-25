@@ -1,0 +1,123 @@
+<html>
+
+<head>
+    <script src="https://cdn.anychart.com/releases/8.3.0/js/anychart-base.min.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.3.0/js/anychart-stock.min.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.3.0/js/anychart-data-adapter.min.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.3.0/js/anychart-ui.min.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.3.0/themes/dark_provence.min.js"></script>
+    <script src="https://cdn.anychart.com/releases/8.3.0/themes/dark_turquoise.min.js"></script>
+
+    <title>AnyChart with CrypoQuote historical data.</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="container"></div>
+
+    <script type="text/javascript">
+        //
+        anychart.onDocumentReady(function () {
+            fetchData('BTCUSD.gdax');
+        });
+
+        function fetchData(symbol) {
+            fetch(`https://feed.cryptoquote.io/bars/minutes/1/${symbol}.internal/now`)
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (myJson) {
+                    let data = [];
+
+                    myJson.bars.bars.forEach((b) => {
+                        data.push([b.time, b.open, b.high, b.low, b.close])
+                    });
+
+                    buildChart(data, symbol);
+                });
+        }
+
+        function buildChart(data, symbol) {
+            anychart.theme('darkTurquoise');
+
+            var dataTable = anychart.data.table(0);
+            dataTable.addData(data);
+
+            // map loaded data for the ohlc series
+            var mapping = dataTable.mapAs({
+                'open': 1,
+                'high': 2,
+                'low': 3,
+                'close': 4
+            });
+
+            // map loaded data for the scroller
+            var scrollerMapping = dataTable.mapAs();
+            scrollerMapping.addField('value', 5);
+
+            // create stock chart
+            var chart = anychart.stock();
+
+            chart.title('Latest 1 Minute Bar for BTCUSD on GDAX via CryptoQuote')
+
+            // create first plot on the chart
+            var plot = chart.plot(0);
+            // set grid settings
+            plot.yGrid(true)
+                .xGrid(true)
+                .yMinorGrid(true)
+                .xMinorGrid(true);
+
+            // create EMA indicators with period 50
+            plot.ema(dataTable.mapAs({
+                'value': 4
+            })).series().stroke('1.5 #455a64');
+
+            var series = plot.candlestick(mapping);
+            series.name(symbol);
+            series.legendItem().iconType('rising-falling');
+
+            // create scroller series with mapped data
+            chart.scroller().candlestick(mapping);
+
+            // set chart selected date/time range
+            // chart.selectRange('2008-01-03', '2009-08-20');
+
+            var grouping = chart.grouping();
+
+            // disable the grouping feature
+            grouping.enabled(false);
+
+            // set container id for the chart
+            chart.container('container');
+            // initiate chart drawing
+            chart.draw();
+
+            // create range picker
+            var rangePicker = anychart.ui.rangePicker();
+            // init range picker
+            rangePicker.render(chart);
+
+            // create range selector
+            var rangeSelector = anychart.ui.rangeSelector();
+            // init range selector
+            rangeSelector.render(chart);
+        }
+    </script>
+</body>
+
+</html>
